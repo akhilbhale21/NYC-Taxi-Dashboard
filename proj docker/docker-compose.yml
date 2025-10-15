@@ -1,0 +1,98 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Expose PostgreSQL port to host on port 5433
+
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db  # Set DB_HOST to the service name 'db'
+      DB_PORT: 5432  # PostgreSQL port
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data:/app/data  # Mount the local 'data' folder to the container's '/app/data'
+    ports:
+      - "8501:8501"  # Expose Streamlit port
+    env_file:
+      - .env  # Automatically load environment variables from the .env file
+    working_dir: /app
+    command: >
+      bash -c "
+        echo 'Running extract...' &&
+        python extract.py &&
+        echo 'Running transform...' &&
+        python transform.py &&
+        echo 'Running load...' &&
+        python load.py &&
+        echo 'Starting Streamlit app...' &&
+        streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+      "
+
+volumes:
+  db_data:
+
+
+
+
+
+# version: '3.8'
+
+# services:
+#   db:
+#     image: postgres:15
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: hello
+#       POSTGRES_DB: taxi_data
+#     volumes:
+#       - pgdata:/var/lib/postgresql/data
+#     ports:
+#       - "5432:5432"
+
+#   etl:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.etl
+#     depends_on:
+#       - db
+#     environment:
+#       DB_HOST: db
+#       DB_PORT: 5432
+#       DB_USER: postgres
+#       DB_PASSWORD: hello
+#       DB_NAME: taxi_data
+#       CLEANED_CSV_PATH: ./data/cleaned_data.csv
+#     volumes:
+#       - pgdata:/var/lib/postgresql/data  # optional but nice
+
+#   streamlit:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.streamlit
+#     depends_on:
+#       - db
+#     ports:
+#       - "8501:8501"
+#     environment:
+#       DB_HOST: db
+#       DB_PORT: 5432
+#       DB_USER: postgres
+#       DB_PASSWORD: hello
+#       DB_NAME: taxi_data
+
+# volumes:
+#   pgdata:
